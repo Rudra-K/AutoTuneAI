@@ -9,6 +9,8 @@ from autotune.adaptive_search import AdaptiveSearchSpace
 from autotune.resource_aware import ResourceAwareTuner
 from autotune.search_space_config import MODEL_TYPE_TO_SPACE
 
+from autotune.utils.logger import get_logger
+logger = get_logger(__name__)
 
 class AutoTuneTuner:
     """
@@ -34,7 +36,7 @@ class AutoTuneTuner:
         if model_type == "unknown":
             raise ValueError("Model type could not be auto-detected. Please use a supported model.")
         
-        print(f"[Tuner] Detected model: {model_type}, task: {task_type}, framework: {framework}")
+        logger.info(f"[Tuner] Detected model: {model_type}, task: {task_type}, framework: {framework}")
 
         # Stage 2: Build Initial Search Space:
         model_config = MODEL_TYPE_TO_SPACE.get(model_type, {})
@@ -74,8 +76,8 @@ class AutoTuneTuner:
             n_trials=n_trials
         )
 
-        print(f"[Tuner] Starting optimization for {n_trials} trials:")
-        print(f"[Tuner] Initial search space: {adaptive_search.current_space}")
+        logger.info(f"[Tuner] Starting optimization for {n_trials} trials:")
+        logger.info(f"[Tuner] Initial search space: {adaptive_search.current_space}")
 
         # Stage 5: Run Optimization (with callback):
         best_params, best_score = optimizer.optimize(callbacks=[adaptive_callback])
@@ -85,9 +87,9 @@ class AutoTuneTuner:
             "best_parameters": best_params,
             "best_score": best_score
         }
-        print(f"\n[Tuner] Optimization finished!")
-        print(f"[Tuner] Best Score (loss): {best_score:.4f}")
-        print(f"[Tuner] Best Parameters: {best_params}")
+        logger.info(f"\n[Tuner] Optimization finished!")
+        logger.info(f"[Tuner] Best Score (loss): {best_score:.4f}")
+        logger.info(f"[Tuner] Best Parameters: {best_params}")
 
         return best_params, best_score
 
@@ -99,27 +101,22 @@ class AutoTuneTuner:
         for i, metric in enumerate(metric_names):
             plt.figure(figsize=(6, 4))
             
-            # --- CORRECTED PLOTTING LOGIC ---
             plt.plot(['Before Tuning'], [before_scores[i]], # Plot only the 'Before' point
                      marker='o', linestyle='-', color='blue', label='Before Tuning')
             plt.plot(['After Tuning'], [after_scores[i]], # Plot only the 'After' point
                      marker='x', linestyle='-', color='red', label='After Tuning')
             
-            # To connect them with a single line to visualize the change
             plt.plot(['Before Tuning', 'After Tuning'], [before_scores[i], after_scores[i]],
                      linestyle='--', color='gray', alpha=0.7, zorder=0) # Grey dashed line connecting
-            # --- END CORRECTED PLOTTING LOGIC ---
             
             plt.title(f"{metric.capitalize()} Comparison")
             plt.ylabel(metric.capitalize())
             plt.grid(True)
             plt.legend()
             
-            # Adjust Y-axis limits more dynamically
             min_val = min(before_scores[i], after_scores[i])
             max_val = max(before_scores[i], after_scores[i])
             
-            # Add some padding to the min/max for better visualization
             padding = (max_val - min_val) * 0.1
             if padding == 0: # Handle cases where values are identical
                 padding = 0.0001

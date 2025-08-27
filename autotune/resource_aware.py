@@ -1,6 +1,9 @@
 import psutil
 import torch
 
+from autotune.utils.logger import get_logger
+logger = get_logger(__name__)
+
 class ResourceAwareTuner:
     """
     Inspects the user's hardware and adjusts the hyperparameter search space
@@ -12,7 +15,7 @@ class ResourceAwareTuner:
         self.ram_gb = round(psutil.virtual_memory().total / 1e9, 2)
         self.is_low_spec = self.cpu_cores < 4 or self.ram_gb < 8
 
-        print(f"[ResourceAware] Detected specs: CPUs: {self.cpu_cores}, RAM: {self.ram_gb} GB, GPU: {self.device}")
+        logger.info(f"[ResourceAware] Detected specs: CPUs: {self.cpu_cores}, RAM: {self.ram_gb} GB, GPU: {self.device}")
 
     def adjust(self, search_space):
         """
@@ -31,11 +34,11 @@ class ResourceAwareTuner:
 
             # Use of min() to ensure we don't go above the user's original max
             adjusted_space['batch_size'] = (bs_config[0], bs_config[1], min(original_max, max_bs))
-            print(f"[ResourceAware] Adjusted 'batch_size' range to a max of {min(original_max, max_bs)}")
+            logger.info(f"[ResourceAware] Adjusted 'batch_size' range to a max of {min(original_max, max_bs)}")
 
         # Shrink all numeric ranges if the system is low-spec
         if self.is_low_spec:
-            print("[ResourceAware] Low-spec system detected. Shrinking general search ranges.")
+            logger.info("[ResourceAware] Low-spec system detected. Shrinking general search ranges.")
             for param, config in adjusted_space.items():
                 if config[0] in ['float', 'int']:
                     param_type, min_val, max_val = config[0], config[1], config[2]

@@ -1,3 +1,6 @@
+from autotune.utils.logger import get_logger
+logger = get_logger(__name__)
+
 class AdaptiveSearchSpace:
     """
     Manages a search space that can dynamically shrink to focus on
@@ -14,7 +17,7 @@ class AdaptiveSearchSpace:
         if len(trial_results) < self.top_k:
             return
 
-        print(f"[AdaptiveSearch] Evaluating top {self.top_k} trials to shrink space:")
+        logger.info(f"[AdaptiveSearch] Evaluating top {self.top_k} trials to shrink space:")
 
         top_trials = sorted(trial_results, key=lambda x: x[1])[:self.top_k]
         
@@ -62,7 +65,7 @@ class AdaptiveSearchSpace:
                 new_space[param_name] = self.current_space[param_name]
 
         self.current_space = new_space
-        print(f"[AdaptiveSearch] New shrunken space: {self.current_space}")
+        logger.info(f"[AdaptiveSearch] New shrunken space: {self.current_space}")
 
     def reset(self):
         """Resets the search space to its original state."""

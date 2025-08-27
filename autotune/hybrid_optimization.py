@@ -1,6 +1,9 @@
 import optuna
 import random
 
+from autotune.utils.logger import get_logger
+logger = get_logger(__name__)
+
 class RLAgent:
     def __init__(self, action_space):
         self.action_space = action_space
@@ -11,7 +14,6 @@ class RLAgent:
     def update(self, action, reward):
         # Placeholder for RL training update
         pass
-
 
 class HybridOptimizer:
     """
@@ -59,7 +61,7 @@ class HybridOptimizer:
         The main method that runs the optimization process.
         """
         # Phase 1: Bayesian Optimization
-        print("[HybridOptimizer] Starting with Bayesian Optimization: ")
+        logger.info("[HybridOptimizer] Starting with Bayesian Optimization: ")
         
         # minimize the objective's return value.
         study = optuna.create_study(direction="minimize")
@@ -73,7 +75,7 @@ class HybridOptimizer:
         best_score = study.best_trial.value
 
         # Phase 2: RL Exploration
-        print("[HybridOptimizer] RL Agent phase (placeholder): ")
+        logger.info("[HybridOptimizer] RL Agent phase (placeholder): ")
         # yet to be implemented
 
         return best_params, best_score
