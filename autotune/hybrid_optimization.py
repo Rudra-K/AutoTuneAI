@@ -1,21 +1,6 @@
 import optuna
 import random
 
-class BayesianOptimizer:
-    def __init__(self, objective_function, n_trials=20):
-        self.objective_function = objective_function
-        self.n_trials = n_trials
-
-    def optimize(self, search_space_sampler):
-        def objective(trial):
-            params = search_space_sampler(trial)
-            return self.objective_function(params)
-
-        study = optuna.create_study(direction="minimize")
-        study.optimize(objective, n_trials=self.n_trials)
-        return study.best_trial
-
-
 class RLAgent:
     def __init__(self, action_space):
         self.action_space = action_space
@@ -29,53 +14,66 @@ class RLAgent:
 
 
 class HybridOptimizer:
-    def __init__(self, objective_function, search_space_fn, sampler_fn, raw_space, n_trials=10):
+    """
+    Mangage the hyperparameter tuning process, hiding the complexity of the Optuna.
+    """
+    def __init__(self, objective_function, search_space, n_trials=50):
+        """
+        Gather and store the necessary inputs.
+
+        Args:
+            objective_function (callable): The function to minimize.
+            search_space (dict): The dictionary defining the search space.
+            n_trials (int): The total number of trials to run.
+        """
         self.objective_function = objective_function
-        self.search_space_fn = search_space_fn
-        self.sampler_fn = sampler_fn
-        self.raw_space = raw_space
+        self.search_space = search_space
         self.n_trials = n_trials
 
+    def _create_optuna_objective(self):
+        """
+        A helper method to create the objective function in the format that Optuna expects. 
+        Here we parse the custom search space format.
+        """
+        def objective(trial):
+            params = {}
+            for name, config in self.search_space.items():
+                param_type = config[0]
+                
+                if param_type == 'float':
+                    is_log = config[3] == 'log' if len(config) == 4 else False
+                    params[name] = trial.suggest_float(name, config[1], config[2], log=is_log)
+                
+                elif param_type == 'int':
+                    params[name] = trial.suggest_int(name, config[1], config[2])
+                
+                elif param_type == 'categorical':
+                    params[name] = trial.suggest_categorical(name, config[1])
+            
+            return self.objective_function(params)
+            
+        return objective
 
-    def optimize(self):
-        print("[HybridOptimizer] Starting with Bayesian Optimization...")
-        bayes = BayesianOptimizer(self.objective_function, n_trials=self.n_trials // 2)
-        bayes_result = bayes.optimize(self.sampler_fn)
+    def optimize(self, callbacks=None):
+        """
+        The main method that runs the optimization process.
+        """
+        # Phase 1: Bayesian Optimization
+        print("[HybridOptimizer] Starting with Bayesian Optimization: ")
+        
+        # minimize the objective's return value.
+        study = optuna.create_study(direction="minimize")
+        
+        optuna_objective = self._create_optuna_objective()
+        
+        # Run the optimization loop (optuna internal workings).
+        study.optimize(optuna_objective, n_trials=self.n_trials, callbacks=callbacks)
+        
+        best_params = study.best_trial.params
+        best_score = study.best_trial.value
 
-        print("[HybridOptimizer] Switching to RL Agent for exploration...")
+        # Phase 2: RL Exploration
+        print("[HybridOptimizer] RL Agent phase (placeholder): ")
+        # yet to be implemented
 
-        # TEMPORARILY COMMENT OUT RL PART
-        # raw_space = self.raw_space
-        #
-        # action_space = []
-        # for _ in range(5):
-        #     sample = {}
-        #     for name, val_range in raw_space.items():
-        #         if isinstance(val_range, tuple) and all(isinstance(v, (int, float)) for v in val_range):
-        #             low, high = val_range
-        #             sample[name] = random.uniform(low, high) if isinstance(low, float) else random.randint(low, high)
-        #         elif isinstance(val_range, list):
-        #             sample[name] = random.choice(val_range)
-        #         else:
-        #             raise ValueError(f"Unsupported parameter type for {name}: {val_range}")
-        #     action_space.append(sample)
-        #
-        # rl_agent = RLAgent(action_space)
-        #
-        # best_score = bayes_result.value
-        # best_params = bayes_result.params
-        #
-        # for _ in range(self.n_trials // 2):
-        #     params = rl_agent.select_action()
-        #     score = self.objective_function(params)
-        #     rl_agent.update(params, score)
-        #
-        #     if score < best_score:
-        #         best_score = score
-        #         best_params = params
-
-        # RETURN ONLY BAYESIAN RESULT
-        return bayes_result.params, bayes_result.value
-
-
-        #return best_params, best_score
+        return best_params, best_score

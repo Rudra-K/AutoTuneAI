@@ -1,124 +1,136 @@
-from autotune.auto_detect import detect_model_type, detect_task_type
-from autotune.hybrid_optimization import HybridOptimizer
-from autotune.search_space import AdaptiveSearchSpace
-from autotune.resource_aware import ResourceAwareTuner
-from autotune.task_aware import TaskAwareTuner
-from autotune.search_space_config import MODEL_TYPE_TO_SPACE
-from autotune.sampler_conv import make_sampler
-import matplotlib.pyplot as plt
-import pandas as pd
 import os
+import optuna
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from autotune.auto_detect import detect_framework, detect_model_type, detect_task_type
+from autotune.hybrid_optimization import HybridOptimizer
+from autotune.adaptive_search import AdaptiveSearchSpace
+from autotune.resource_aware import ResourceAwareTuner
+from autotune.search_space_config import MODEL_TYPE_TO_SPACE
+
 
 class AutoTuneTuner:
-    def __init__(self, model, objective_function, config=None, search_method="bayesian", n_trials=50):
+    """
+    The main user-facing class for managing the tuning process.
+    """
+    def __init__(self, model, objective_function):
+        """
+        A Constructor that stores the user's model and objective.
+        """
+        if not callable(objective_function):
+            raise TypeError("The objective_function must be a callable function.")
+        
         self.model = model
         self.objective_function = objective_function
-        self.search_method = search_method
-        self.config = config
-        self.n_trials = config["tuning"]["n_trials"] if config and "tuning" in config else n_trials
+        self.results = {}
 
-        self.model_type = detect_model_type(model)
-        if self.model_type == "unknown":
-            self.model_type = input("Couldn't auto-detect model type. Please enter it manually: ")
-
-        self.task_type = detect_task_type(model)
-        if self.task_type == "unknown":
-            self.task_type = input("Couldn't auto-detect task type. Please enter it manually: ")
-
-    def objective(self, params):
-        return self.objective_function(params)
-
-    def tune(self):
-        print(f"[Tuner] ✅ Detected model type: {self.model_type}, task type: {self.task_type}")
-
-        initial_space = MODEL_TYPE_TO_SPACE.get(self.model_type, {})
-        adaptive_space = AdaptiveSearchSpace(initial_space)
-        base_search_space = adaptive_space.current_space
+    def tune(self, n_trials=50):
+        # Stage 1: Detection:
+        framework = detect_framework(self.model)
+        model_type = detect_model_type(self.model)
+        task_type = detect_task_type(self.model, framework=framework)
         
-        task_aware_space = TaskAwareTuner(self.model).get_task_params()
+        if model_type == "unknown":
+            raise ValueError("Model type could not be auto-detected. Please use a supported model.")
+        
+        print(f"[Tuner] Detected model: {model_type}, task: {task_type}, framework: {framework}")
 
-        # Combine base search space and task-aware adjustments
-        combined_space = {**base_search_space, **task_aware_space}
+        # Stage 2: Build Initial Search Space:
+        model_config = MODEL_TYPE_TO_SPACE.get(model_type, {})
+        base_space = model_config.get("_base", {})
+        task_specific_space = model_config.get(task_type, {})
+        initial_space = {**base_space, **task_specific_space}
 
-        # Resource-aware tuning adjustments
+        if not initial_space:
+            raise ValueError(f"No search space found for model '{model_type}' and task '{task_type}'.")
+        
+        # Stage 3: Adjust Space for Hardware:
         resource_tuner = ResourceAwareTuner()
-        final_space = resource_tuner.adjust(combined_space)
+        adjusted_space = resource_tuner.adjust(initial_space)
+        
+        # Stage 4: Dynamic Search and Optimizer:
+        adaptive_search = AdaptiveSearchSpace(adjusted_space, top_k=10, shrink_factor=0.95, elite_fraction=0.3)
+        
+        def adaptive_callback(study, _frozen_trial):
+            """
+            This function is called after each trial.
+            It updates the adaptive search space with the latest results.
+            """
+            # Get all completed trials from the study
+            completed_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
+            
+            trial_results = [(t.params, t.value) for t in completed_trials]
+            
+            adaptive_search.update_space(trial_results)
+            
+            # Update the optimizer's search space for the NEXT trial
+            optimizer.search_space = adaptive_search.current_space
 
-        def search_space_structure():
-            return {
-                name: config[1:] if config[0] in ["float", "int"] else config[1]
-                for name, config in final_space.items()
-            }
-
-
-        def search_space_sampler(trial):
-            params = {}
-            for name, config in final_space.items():
-                param_type = config[0]
-                if param_type == "float":
-                    params[name] = trial.suggest_float(name, config[1], config[2])
-                elif param_type == "int":
-                    params[name] = trial.suggest_int(name, config[1], config[2])
-                elif param_type == "categorical":
-                    params[name] = trial.suggest_categorical(name, config[1])
-            return params
-
-
-        print("[Tuner] 🚀 Starting hybrid optimization...")
-        print("[Debug] Final search space:", final_space)
-
-        model_type = self.model_type  # dynamically detected earlier
-        sampler_fn = make_sampler(model_type)
-
-        raw_space = search_space_structure()
-
+        # Stage 5: Initialize Optimizer:
         optimizer = HybridOptimizer(
-            objective_function=self.objective,
-            search_space_fn=search_space_structure,
-            sampler_fn=sampler_fn,
-            raw_space=raw_space,
-            n_trials=self.n_trials
+            objective_function=self.objective_function,
+            search_space=adaptive_search.current_space,
+            n_trials=n_trials
         )
 
-        best_params, best_score = optimizer.optimize()
+        print(f"[Tuner] Starting optimization for {n_trials} trials:")
+        print(f"[Tuner] Initial search space: {adaptive_search.current_space}")
 
-        print(f"[Tuner] 🏆 Best score: {best_score}")
-        print(f"[Tuner] 🧠 Best parameters: {best_params}")
+        # Stage 5: Run Optimization (with callback):
+        best_params, best_score = optimizer.optimize(callbacks=[adaptive_callback])
+
+        # Stage 6: Store and Display Results:
+        self.results = {
+            "best_parameters": best_params,
+            "best_score": best_score
+        }
+        print(f"\n[Tuner] Optimization finished!")
+        print(f"[Tuner] Best Score (loss): {best_score:.4f}")
+        print(f"[Tuner] Best Parameters: {best_params}")
 
         return best_params, best_score
-    
+
     def plot_metrics_comparison(self, metrics_before, metrics_after, save_path=None):
         metric_names = list(metrics_before.keys())
-        before_scores = [metrics_before[m] for m in metric_names]
-        after_scores = [metrics_after[m] for m in metric_names]
+        before_scores = list(metrics_before.values())
+        after_scores = list(metrics_after.values())
 
         for i, metric in enumerate(metric_names):
             plt.figure(figsize=(6, 4))
-            plt.plot(['Before Tuning', 'After Tuning'],
-                    [before_scores[i], after_scores[i]],
-                    marker='o', linestyle='-', color='blue', label='Before')
-            plt.plot(['Before Tuning', 'After Tuning'],
-                    [before_scores[i], after_scores[i]],
-                    marker='x', linestyle='--', color='red', label='After')
+            
+            # --- CORRECTED PLOTTING LOGIC ---
+            plt.plot(['Before Tuning'], [before_scores[i]], # Plot only the 'Before' point
+                     marker='o', linestyle='-', color='blue', label='Before Tuning')
+            plt.plot(['After Tuning'], [after_scores[i]], # Plot only the 'After' point
+                     marker='x', linestyle='-', color='red', label='After Tuning')
+            
+            # To connect them with a single line to visualize the change
+            plt.plot(['Before Tuning', 'After Tuning'], [before_scores[i], after_scores[i]],
+                     linestyle='--', color='gray', alpha=0.7, zorder=0) # Grey dashed line connecting
+            # --- END CORRECTED PLOTTING LOGIC ---
+            
             plt.title(f"{metric.capitalize()} Comparison")
             plt.ylabel(metric.capitalize())
             plt.grid(True)
             plt.legend()
-
-            # 🔍 Dynamic Y-axis zoom based on values
-            delta = abs(before_scores[i] - after_scores[i])
-            if delta < 1e-4:  # very small difference
-                delta = 0.01
-            min_val = min(before_scores[i], after_scores[i]) - delta * 0.3
-            max_val = max(before_scores[i], after_scores[i]) + delta * 0.3
-            plt.ylim(max(0, min_val), min(1, max_val))
-
+            
+            # Adjust Y-axis limits more dynamically
+            min_val = min(before_scores[i], after_scores[i])
+            max_val = max(before_scores[i], after_scores[i])
+            
+            # Add some padding to the min/max for better visualization
+            padding = (max_val - min_val) * 0.1
+            if padding == 0: # Handle cases where values are identical
+                padding = 0.0001
+            
+            plt.ylim(bottom=max(0, min_val - padding), top=max_val + padding)
+            
             if save_path:
                 os.makedirs(save_path, exist_ok=True)
-                plt.savefig(f"{save_path}/{metric}_comparison_zoom.png", dpi=300)
+                plt.savefig(f"{save_path}/{metric}_comparison.png", dpi=300) # Removed _zoom
             plt.show()
 
-        # Metric change table
         change_percent = [(after - before) / before * 100 if before != 0 else 0
                         for before, after in zip(before_scores, after_scores)]
         df = pd.DataFrame({
@@ -130,5 +142,3 @@ class AutoTuneTuner:
 
         print("\n=== Metric Change Summary ===\n")
         print(df.to_string(index=False))
-
-
