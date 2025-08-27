@@ -27,16 +27,16 @@ class AutoTuneTuner:
         self.objective_function = objective_function
         self.results = {}
 
-    def tune(self, n_trials=50):
+    def tune(self, n_trials=50, adaptive=True):
         # Stage 1: Detection:
         framework = detect_framework(self.model)
         model_type = detect_model_type(self.model)
         task_type = detect_task_type(self.model, framework=framework)
-        
+
         if model_type == "unknown":
             raise ValueError("Model type could not be auto-detected. Please use a supported model.")
         
-        logger.info(f"[Tuner] Detected model: {model_type}, task: {task_type}, framework: {framework}")
+        logger.info(f"Detected model: {model_type}, task: {task_type}, framework: {framework}")
 
         # Stage 2: Build Initial Search Space:
         model_config = MODEL_TYPE_TO_SPACE.get(model_type, {})
@@ -51,45 +51,45 @@ class AutoTuneTuner:
         resource_tuner = ResourceAwareTuner()
         adjusted_space = resource_tuner.adjust(initial_space)
         
-        # Stage 4: Dynamic Search and Optimizer:
-        adaptive_search = AdaptiveSearchSpace(adjusted_space, top_k=10, shrink_factor=0.95, elite_fraction=0.3)
+        # Stage 4: Dynamic Search
+        adaptive_search = AdaptiveSearchSpace(
+            adjusted_space,
+            top_k=10,
+            shrink_factor=0.95,
+            elite_fraction=0.4
+        )
         
-        def adaptive_callback(study, _frozen_trial):
-            """
-            This function is called after each trial.
-            It updates the adaptive search space with the latest results.
-            """
-            # Get all completed trials from the study
-            completed_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
-            
-            trial_results = [(t.params, t.value) for t in completed_trials]
-            
-            adaptive_search.update_space(trial_results)
-            
-            # Update the optimizer's search space for the NEXT trial
-            optimizer.search_space = adaptive_search.current_space
-
-        # Stage 5: Initialize Optimizer:
         optimizer = HybridOptimizer(
             objective_function=self.objective_function,
             search_space=adaptive_search.current_space,
             n_trials=n_trials
         )
 
-        logger.info(f"[Tuner] Starting optimization for {n_trials} trials:")
-        logger.info(f"[Tuner] Initial search space: {adaptive_search.current_space}")
+        logger.info(f"Starting optimization for {n_trials} trials.")
+        logger.info(f"Adaptive Search enabled: {adaptive}")
+        logger.info(f"Initial search space: {adaptive_search.current_space}")
 
-        # Stage 5: Run Optimization (with callback):
-        best_params, best_score = optimizer.optimize(callbacks=[adaptive_callback])
+        # Stage 5: Run Optimization with CONDITIONAL Callback
+        callbacks_list = []
+        if adaptive:
+            # Define and add the callback ONLY if adaptive is True
+            def adaptive_callback(study, _frozen_trial):
+                completed_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
+                trial_results = [(t.params, t.value) for t in completed_trials]
+                adaptive_search.update_space(trial_results)
+                optimizer.search_space = adaptive_search.current_space
+            callbacks_list.append(adaptive_callback)
 
-        # Stage 6: Store and Display Results:
+        best_params, best_score = optimizer.optimize(callbacks=callbacks_list)
+
+        # Stage 6: Store and Display Results
         self.results = {
             "best_parameters": best_params,
             "best_score": best_score
         }
-        logger.info(f"\n[Tuner] Optimization finished!")
-        logger.info(f"[Tuner] Best Score (loss): {best_score:.4f}")
-        logger.info(f"[Tuner] Best Parameters: {best_params}")
+        logger.info(f"Optimization finished:")
+        logger.info(f"Best Score (loss): {best_score:.4f}")
+        logger.info(f"Best Parameters: {best_params}")
 
         return best_params, best_score
 
@@ -118,7 +118,7 @@ class AutoTuneTuner:
             max_val = max(before_scores[i], after_scores[i])
             
             padding = (max_val - min_val) * 0.1
-            if padding == 0: # Handle cases where values are identical
+            if padding == 0:
                 padding = 0.0001
             
             plt.ylim(bottom=max(0, min_val - padding), top=max_val + padding)
