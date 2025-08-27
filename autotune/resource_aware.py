@@ -10,7 +10,12 @@ class ResourceAwareTuner:
     to be more efficient and to avoid overwhelming the machine.
     """
     def __init__(self):
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        try:
+            import torch
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        except ImportError:
+            # If torch is not installed, default to CPU
+            self.device = "cpu"
         self.cpu_cores = psutil.cpu_count(logical=True)
         self.ram_gb = round(psutil.virtual_memory().total / 1e9, 2)
         self.is_low_spec = self.cpu_cores < 4 or self.ram_gb < 8
