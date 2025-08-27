@@ -22,6 +22,7 @@ dependencies = [
     "scikit-learn",
     "pandas",
     "psutil",
+    "typer[all]",
     "matplotlib",
 ]
 
