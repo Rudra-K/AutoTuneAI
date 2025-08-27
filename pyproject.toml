@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "autotuneai"
+version = "2.0.0"
+authors = [
+  { name="Rudra Kawade", email="rudrakawade2004@gmail.com" },
+]
+description = "An adaptive and automated hyperparameter tuning system for ML models."
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "optuna",
+    "scikit-learn",
+    "pandas",
+    "psutil",
+    "torch",
+    "matplotlib",
+]
+
+[project.urls]
+Homepage = "https://github.com/Rudra-K/AutoTuneAI"
