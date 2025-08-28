@@ -17,14 +17,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
-dependencies = [
-    "optuna",
-    "scikit-learn",
-    "pandas",
-    "psutil",
-    "typer[all]",
-    "matplotlib",
-]
+dependencies = []
 
 [project.urls]
 Homepage = "https://github.com/Rudra-K/AutoTuneAI"

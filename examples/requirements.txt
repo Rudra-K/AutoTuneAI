@@ -1,5 +1,12 @@
+# Core Libraries
+optuna
 scikit-learn
+pandas
+psutil
+matplotlib
+typer[all]
 
+# Deep Learning Examples
 tensorflow
 torch
 torchvision
