@@ -21,3 +21,8 @@ dependencies = []
 
 [project.urls]
 Homepage = "https://github.com/Rudra-K/AutoTuneAI"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["autotune*"]
+exclude = ["tests*", "examples*"]
