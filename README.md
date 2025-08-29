@@ -92,9 +92,8 @@ To demonstrate its effectiveness, AutoTuneAI was tasked with tuning a LightGBM c
 * **Metric:** The objective was set to `average_precision`, a robust metric that rewards models for finding a good balance between Precision and Recall—critical for a practical fraud detection system.
 * **Result:** The experiment compared a default LightGBM model against the model found by AutoTuneAI after 30 trials. The results were a massive success.
 
-*(Here, you should add your best screenshot of the final terminal output, `image_351879.jpg`)*
 
-**`/home/rudra/Pictures/Screenshots/Screenshot from 2025-08-29 17-08-44.png`**
+![LightGBM Tuning Results](images/lgbm_out_1.png) (images/lgbm_out_3.png)
 
 | Metric    | Before   | After    | Change (%)  |
 | :-------- | :------- | :------- | :---------- |
