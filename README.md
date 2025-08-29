@@ -101,7 +101,7 @@ To demonstrate its effectiveness, AutoTuneAI was tasked with tuning a LightGBM c
 | accuracy  | 0.996899 | 0.999485 | +0.26%      |
 | precision | 0.313099 | 0.919355 | **+193.63%**|
 | recall    | 0.662162 | 0.770270 | **+16.33%** |
-| f1_score  | 0.425163 | 0.838235 | **+96.87%** |
+| f1_score  | 0.425163 | 0.838235 | **+96.16%** |
 
 The tuner successfully created a model that is both highly precise (very few false alarms) and has strong recall (catches most fraud cases).
 
