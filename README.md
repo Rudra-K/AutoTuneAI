@@ -93,7 +93,8 @@ To demonstrate its effectiveness, AutoTuneAI was tasked with tuning a LightGBM c
 * **Result:** The experiment compared a default LightGBM model against the model found by AutoTuneAI after 30 trials. The results were a massive success.
 
 
-![LightGBM Tuning Results](images/lgbm_out_1.png) (images/lgbm_out_3.png)
+![LightGBM Tuning Results](images/lgbm_out_1.png) 
+![LightGBM Tuning Results](images/lgbm_out_3.png)
 
 | Metric    | Before   | After    | Change (%)  |
 | :-------- | :------- | :------- | :---------- |
