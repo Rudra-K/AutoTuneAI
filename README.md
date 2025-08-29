@@ -94,6 +94,7 @@ To demonstrate its effectiveness, AutoTuneAI was tasked with tuning a LightGBM c
 
 
 ![LightGBM Tuning Results](images/lgbm_out_1.png) 
+![LightGBM Tuning Results](images/lgbm_out_2.png)
 ![LightGBM Tuning Results](images/lgbm_out_3.png)
 
 | Metric    | Before   | After    | Change (%)  |
