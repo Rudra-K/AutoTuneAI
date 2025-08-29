@@ -94,7 +94,7 @@ To demonstrate its effectiveness, AutoTuneAI was tasked with tuning a LightGBM c
 
 *(Here, you should add your best screenshot of the final terminal output, `image_351879.jpg`)*
 
-**`[Paste your image here]`**
+**`/home/rudra/Pictures/Screenshots/Screenshot from 2025-08-29 17-08-44.png`**
 
 | Metric    | Before   | After    | Change (%)  |
 | :-------- | :------- | :------- | :---------- |
