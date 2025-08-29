@@ -49,16 +49,8 @@ def run_transformer_experiment(n_trials: int, epochs: int):
     study.optimize(objective, n_trials=n_trials, show_progress_bar=True)
     
     # Results
-    logger.info(f"CNN Experiment Finished")
-    change_percent = {
-        metric: (metrics_after[metric] - before) / before * 100 if before != 0 else 0
-        for metric, before in metrics_before.items()
-    }
-    df_results = pd.DataFrame({
-        "Metric": list(metrics_before.keys()),
-        "Before": list(metrics_before.values()),
-        "After": list(metrics_after.values()),
-        "Change (%)": [f"{v:+.2f}%" for v in change_percent.values()]
-    })
-    print("\n=== Metric Change Summary ===\n")
-    print(df_results.to_string(index=False))
+    logger.info(" Transformer Experiment Finished ---")
+    logger.info(f"Best trial validation accuracy: {study.best_value:.4f}")
+    logger.info("Best parameters found:")
+    for key, value in study.best_params.items():
+        logger.info(f"  {key}: {value}")
