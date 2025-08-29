@@ -27,7 +27,7 @@ class AutoTuneTuner:
         self.objective_function = objective_function
         self.results = {}
 
-    def tune(self, n_trials=50, adaptive=True):
+    def tune(self, n_trials=50, adaptive=True, callbacks=None):
         # Stage 1: Detection:
         framework = detect_framework(self.model)
         model_type = detect_model_type(self.model)
@@ -52,11 +52,13 @@ class AutoTuneTuner:
         adjusted_space = resource_tuner.adjust(initial_space)
         
         # Stage 4: Dynamic Search
+        exploration_trials = max(10, int(n_trials * 0.4))
+
         adaptive_search = AdaptiveSearchSpace(
             adjusted_space,
-            top_k=10,
-            shrink_factor=0.95,
-            elite_fraction=0.4
+            top_k=exploration_trials,
+            shrink_factor=0.95,       
+            elite_fraction=0.4        
         )
         
         optimizer = HybridOptimizer(
@@ -69,18 +71,20 @@ class AutoTuneTuner:
         logger.info(f"Adaptive Search enabled: {adaptive}")
         logger.info(f"Initial search space: {adaptive_search.current_space}")
 
-        # Stage 5: Run Optimization with CONDITIONAL Callback
-        callbacks_list = []
+        # Stage 5: Run Optimization with Callback(True/False)
+        callbacks_to_run = []
         if adaptive:
-            # Define and add the callback ONLY if adaptive is True
             def adaptive_callback(study, _frozen_trial):
                 completed_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
                 trial_results = [(t.params, t.value) for t in completed_trials]
                 adaptive_search.update_space(trial_results)
                 optimizer.search_space = adaptive_search.current_space
-            callbacks_list.append(adaptive_callback)
+            callbacks_to_run.append(adaptive_callback)
 
-        best_params, best_score = optimizer.optimize(callbacks=callbacks_list)
+        if callbacks:
+            callbacks_to_run.extend(callbacks)
+
+        best_params, best_score = optimizer.optimize(callbacks=callbacks_to_run)
 
         # Stage 6: Store and Display Results
         self.results = {
@@ -101,13 +105,13 @@ class AutoTuneTuner:
         for i, metric in enumerate(metric_names):
             plt.figure(figsize=(6, 4))
             
-            plt.plot(['Before Tuning'], [before_scores[i]], # Plot only the 'Before' point
+            plt.plot(['Before Tuning'], [before_scores[i]],
                      marker='o', linestyle='-', color='blue', label='Before Tuning')
-            plt.plot(['After Tuning'], [after_scores[i]], # Plot only the 'After' point
+            plt.plot(['After Tuning'], [after_scores[i]],
                      marker='x', linestyle='-', color='red', label='After Tuning')
             
             plt.plot(['Before Tuning', 'After Tuning'], [before_scores[i], after_scores[i]],
-                     linestyle='--', color='gray', alpha=0.7, zorder=0) # Grey dashed line connecting
+                     linestyle='--', color='gray', alpha=0.7, zorder=0)
             
             plt.title(f"{metric.capitalize()} Comparison")
             plt.ylabel(metric.capitalize())
@@ -125,7 +129,7 @@ class AutoTuneTuner:
             
             if save_path:
                 os.makedirs(save_path, exist_ok=True)
-                plt.savefig(f"{save_path}/{metric}_comparison.png", dpi=300) # Removed _zoom
+                plt.savefig(f"{save_path}/{metric}_comparison.png", dpi=300)
             plt.show()
 
         change_percent = [(after - before) / before * 100 if before != 0 else 0
