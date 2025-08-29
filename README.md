@@ -2,7 +2,9 @@
 
 
 ## Abstract
-Hyperparameter Optimization (HPO) is a critical stage in the machine learning lifecycle, yet it remains a significant challenge due to the high dimensionality of search spaces and the computational cost of model evaluation. Standard optimization algorithms like Bayesian Optimization are powerful but operate with limited context. This project, AutoTuneAI, presents a research-focused toolkit that constructs an intelligent meta-learning layer on top of a core optimizer. It introduces a suite of context-aware heuristics—including hardware-resource awareness, model- and task-awareness, and a novel "Elite Group" adaptive search strategy—to automate and accelerate the discovery of optimal parameters. When benchmarked on a highly imbalanced fraud detection dataset, AutoTuneAI successfully tuned a LightGBM model, improving the F1-score by over 97% and precision by over 190% compared to the baseline, demonstrating the significant value of a holistic, system-aware approach to HPO.
+Hyperparameter Optimization is a critical stage in the machine learning lifecycle, yet it remains a significant challenge due to the high dimensionality of search spaces and the computational cost of model evaluation. Standard optimization algorithms like Bayesian Optimization are powerful but operate with limited context. 
+
+This project, AutoTuneAI, presents a research-focused toolkit that constructs an intelligent meta-learning layer on top of a core optimizer. It introduces a suite of context-aware heuristics—including hardware-resource awareness, model- and task-awareness, and a novel "Elite Group" adaptive search strategy—to automate and accelerate the discovery of optimal parameters. When benchmarked on a highly imbalanced fraud detection dataset, AutoTuneAI successfully tuned a LightGBM model, improving the F1-score by over 97% and precision by over 190% compared to the baseline, demonstrating the significant value of a holistic, system-aware approach to HPO.
 
 ---
 
