@@ -1,4 +1,4 @@
-from tensorflow import layers, models
+from tensorflow.keras import layers, models
 
 def create_cnn_model(
     num_filters_1=32,
